@@ -23,4 +23,5 @@ export interface IKPayStore {
   updateStatus(orderId: string, status: PaymentStatus, metadata?: Record<string, unknown>): Promise<void>;
   acquireLock(orderId: string, ttlMs?: number): Promise<boolean>;
   releaseLock(orderId: string): Promise<void>;
+  findPendingByAmount?(amountPaise: number, maxAgeMs?: number): Promise<OrderRecord | null>;
 }

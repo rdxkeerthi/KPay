@@ -2,7 +2,7 @@
   "name": "kpay",
   "version": "1.0.0",
   "description": "Enterprise-grade, zero-commission, cyber-hardened UPI payment gateway for Node.js & TypeScript. Direct-to-bank settlement, multi-PSP failover, real-time SSE listener, branded QR generation.",
-  "author": "KPay Team",
+  "author": "rdxkeerthi",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -58,8 +58,9 @@
   "sideEffects": false,
   "files": [
     "dist",
+    "scripts",
     "README.md",
-    "SKILL.md",
+    "SECURITY.md",
     "LICENSE"
   ],
   "scripts": {
@@ -69,7 +70,17 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build",
+    "postinstall": "node ./scripts/postinstall.js",
     "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rdxkeerthi/kpay.git"
+  },
+  "homepage": "https://github.com/rdxkeerthi/kpay#readme",
+  "bugs": {
+    "url": "https://github.com/rdxkeerthi/kpay/issues"
   },
   "keywords": [
     "kpay",

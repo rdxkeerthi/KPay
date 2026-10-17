@@ -194,13 +194,23 @@ export interface UPIQRRequest {
   /** Transaction note shown in UPI app */
   note?: string;
   /**
+   * Account type:
+   * - 'merchant': Peer-to-Merchant (P2M) verified merchant account (uses mode=04, locked amount)
+   * - 'personal': Peer-to-Peer (P2P) personal savings/current account. Omit mode=04 to bypass Paytm Protect / NPCI Risk Policy alerts!
+   */
+  accountType?: 'merchant' | 'personal';
+  /** Optional customer or payee 10-digit mobile number for direct UPI number transfers */
+  mobileNumber?: string;
+  /**
    * Amount mode:
-   * - 'fixed' (default): mode=04 (locked, user cannot alter amount)
+   * - 'fixed': mode=04 (locked, user cannot alter amount - for verified merchants)
    * - 'open': mode=00 (user can change amount)
    */
   mode?: 'fixed' | 'open';
   /** Merchant Category Code (4-digit NPCI MCC, e.g. '5411') */
   mc?: string;
+  /** Return callback URL where GPay/PhonePe/Paytm redirect with Status=SUCCESS after payment completes */
+  url?: string;
   /** Visual customization options */
   visualOptions?: {
     darkColor?: string; // Hex color for QR dots (default: #000000)
@@ -225,4 +235,37 @@ export interface UPIIntentLink {
   bhim: string;
   cred: string;
   amazonpay: string;
+  /** Intent to pay via UPI mobile number (e.g. 9876543210@upi) */
+  mobileIntent?: string;
 }
+
+// ─── Network Security: mTLS & JWS Specifications ─────────────────────────
+
+export interface MtlsConfig {
+  /** Trusted CA Certificate(s) (PEM string or Buffer) */
+  caCert?: string | Buffer;
+  /** Certificate in PEM format */
+  cert?: string | Buffer;
+  /** Private Key in PEM format */
+  key?: string | Buffer;
+  /** Passphrase for private key if encrypted */
+  passphrase?: string;
+  /** Enforce client certificate validation (default: true) */
+  rejectUnauthorized?: boolean;
+  /** Whitelist of trusted client certificate SHA-256 fingerprints */
+  allowedFingerprints?: string[];
+  /** Whitelist of trusted Common Names (CNs) */
+  allowedCommonNames?: string[];
+}
+
+export interface JwsVerifyOptions {
+  /** Public key in PEM format */
+  publicKey: string | Buffer;
+  /** Supported asymmetric signing algorithms */
+  algorithm?: 'RS256' | 'ES256' | 'PS256';
+  /** Expected issuer (iss) claim */
+  expectedIssuer?: string;
+  /** Clock tolerance in seconds (default: 60) */
+  clockToleranceSeconds?: number;
+}
+

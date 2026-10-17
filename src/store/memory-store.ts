@@ -45,6 +45,17 @@ export class MemoryStore implements IKPayStore {
     this.locks.delete(orderId);
   }
 
+  async findPendingByAmount(amountPaise: number, maxAgeMs = 900000): Promise<OrderRecord | null> {
+    const now = Date.now();
+    const records = Array.from(this.orders.values()).reverse();
+    for (const order of records) {
+      if (order.status === 'PENDING' && order.amount === amountPaise && (now - order.createdAt) <= maxAgeMs) {
+        return { ...order };
+      }
+    }
+    return null;
+  }
+
   clear(): void {
     this.orders.clear();
     this.locks.clear();

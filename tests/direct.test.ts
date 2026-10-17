@@ -1,13 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { DirectUPIGateway } from '../src/direct/gateway';
 import { parseBankCreditNotification } from '../src/direct/parser';
+import { parseUpiReturnCallback } from '../src/direct/callback';
 import { KPay } from '../src/client';
 import { InvalidConfigError, SecurityViolationError } from '../src/errors';
 
 describe('KPay Direct UPI — Personal & Current Bank Account Protocol', () => {
   const credentials = {
-    vpa: 'robin.freelancer@okhdfcbank',
-    payeeName: 'Robin Sharaya',
+    vpa: 'merchant.test@okhdfcbank',
+    payeeName: 'Test Merchant Payee',
     mcc: '5411',
   };
 
@@ -24,8 +25,8 @@ describe('KPay Direct UPI — Personal & Current Bank Account Protocol', () => {
 
     expect(payment.success).toBe(true);
     expect(payment.provider).toBe('direct');
-    expect(payment.upiUri).toContain('pa=robin.freelancer%40okhdfcbank');
-    expect(payment.upiUri).toContain('pn=Robin+Sharaya');
+    expect(payment.upiUri).toContain('pa=merchant.test%40okhdfcbank');
+    expect(payment.upiUri).toContain('pn=Test+Merchant+Payee');
     expect(payment.upiUri).toContain('am=499.00');
     expect(payment.upiUri).toContain('mode=04'); // Locked amount!
     expect(payment.qrImage).toMatch(/^data:image\/png;base64,/);
@@ -156,3 +157,59 @@ describe('KPay Direct UPI — End-to-End Automatic Ingestion via KPay Client', (
     expect(status.amount).toBe(99900);
   });
 });
+
+describe('KPay Direct UPI — App Return Intent Callback Parser', () => {
+  it('parses successful GPay / PhonePe return intent URL parameters', () => {
+    const returnUrl = 'https://mysite.com/checkout/done?Status=SUCCESS&txnId=UPI123456789&responseCode=00&ApprovalRefNo=987654321098&txnRef=ORD_RET_101';
+    const result = parseUpiReturnCallback(returnUrl);
+
+    expect(result.verified).toBe(true);
+    expect(result.status).toBe('SUCCESS');
+    expect(result.orderId).toBe('ORD_RET_101');
+    expect(result.utr).toBe('987654321098');
+    expect(result.responseCode).toBe('00');
+  });
+
+  it('detects user cancellation or failed transactions from UPI app', () => {
+    const returnParams = {
+      Status: 'FAILURE',
+      responseCode: 'ZM',
+      txnRef: 'ORD_FAILED_99',
+    };
+    const result = parseUpiReturnCallback(returnParams);
+
+    expect(result.verified).toBe(false);
+    expect(result.status).toBe('FAILED');
+    expect(result.orderId).toBe('ORD_FAILED_99');
+  });
+
+  it('verifies return callback and updates order status in DirectUPIGateway', async () => {
+    const gateway = new DirectUPIGateway({
+      vpa: 'merchant@okhdfcbank',
+      payeeName: 'Test Merchant',
+    });
+
+    await gateway.createPayment({
+      amount: 500,
+      orderId: 'ORD_RET_GATEWAY',
+      customerPhone: '9876543210',
+    });
+
+    const callbackParams = {
+      Status: 'SUCCESS',
+      responseCode: '00',
+      ApprovalRefNo: '555666777888',
+      txnRef: 'ORD_RET_GATEWAY',
+    };
+
+    const result = await gateway.verifyReturnCallback(callbackParams);
+    expect(result.verified).toBe(true);
+    expect(result.status).toBe('SUCCESS');
+    expect(result.utr).toBe('555666777888');
+
+    const status = await gateway.checkStatus('ORD_RET_GATEWAY');
+    expect(status.status).toBe('SUCCESS');
+    expect(status.transactionId).toBe('555666777888');
+  });
+});
+

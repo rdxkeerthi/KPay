@@ -17,7 +17,13 @@ import {
 import { validateUrlSsrf, isPrivateOrReservedHost } from '../src/security/ssrf-shield';
 import { isIpInCidr, isIpAllowedForProvider, assertIpAllowed } from '../src/security/ip-guard';
 import { verifyAmountIntegrity } from '../src/security/amount-guard';
-import { maskSecrets } from '../src/security/mask';
+import { maskSecrets, maskVpa } from '../src/security/mask';
+import { SlidingWindowRateLimiter } from '../src/security/rate-limiter';
+import { getPaymentSecurityHeaders } from '../src/security/headers';
+import { verifyMtlsClientCertificate } from '../src/security/mtls';
+import { signJws, verifyJws } from '../src/security/jws';
+import { NonceVault } from '../src/security/nonce-vault';
+import { generateKeyPairSync } from 'node:crypto';
 import { SecurityViolationError, InvalidConfigError } from '../src/errors';
 
 describe('Cyber Security — Constant Time Equality', () => {
@@ -126,6 +132,7 @@ describe('Cyber Security — Masking Logger', () => {
       saltKey: 'super_secret_salt_12345',
       merchantKey: 'paytm_secret_key_67890',
       customerPhone: '9876543210',
+      payeeVpa: 'mybusiness@icici',
       orderId: 'ORD_100',
     };
 
@@ -133,6 +140,115 @@ describe('Cyber Security — Masking Logger', () => {
     expect(masked.saltKey).toBe('[REDACTED_SECRET]');
     expect(masked.merchantKey).toBe('[REDACTED_SECRET]');
     expect(masked.customerPhone).toBe('98******10');
+    expect(masked.payeeVpa).toBe('my****ss@icici');
     expect(masked.orderId).toBe('ORD_100');
   });
+
+  it('masks UPI VPAs correctly using maskVpa', () => {
+    expect(maskVpa('john.developer@okhdfcbank')).toBe('jo****er@okhdfcbank');
+    expect(maskVpa('ab@icici')).toBe('*@icici');
+    expect(maskVpa('test@paytm')).toBe('t**@paytm');
+  });
 });
+
+describe('Cyber Security — Sliding Window Rate Limiter', () => {
+  it('allows requests within threshold and blocks flood attacks', () => {
+    const limiter = new SlidingWindowRateLimiter({ windowMs: 1000, maxRequests: 3 });
+
+    expect(limiter.check('ip_1').allowed).toBe(true);
+    expect(limiter.check('ip_1').allowed).toBe(true);
+    expect(limiter.check('ip_1').allowed).toBe(true);
+    expect(() => limiter.check('ip_1')).toThrow(SecurityViolationError);
+  });
+});
+
+describe('Cyber Security — Anti-Clickjacking & Payment Security Headers', () => {
+  it('provides strict defensive headers', () => {
+    const headers = getPaymentSecurityHeaders();
+
+    expect(headers['X-Frame-Options']).toBe('DENY');
+    expect(headers['X-Content-Type-Options']).toBe('nosniff');
+    expect(headers['Content-Security-Policy']).toContain("frame-ancestors 'none'");
+    expect(headers['Cache-Control']).toContain('no-store');
+  });
+});
+
+describe('Cyber Security — mTLS Handshake & Client Certificate Guard', () => {
+  it('authenticates valid peer certificates matching fingerprint and Common Name', () => {
+    const mockSocket = {
+      authorized: true,
+      getPeerCertificate: () => ({
+        fingerprint256: 'AA:BB:CC:DD:EE:FF:11:22:33:44:55:66:77:88:99:00:AA:BB:CC:DD:EE:FF:11:22:33:44:55:66:77:88:99:00',
+        subject: { CN: 'psp.bank.gateway' },
+        issuer: { CN: 'Bank Root CA' },
+        valid_from: '2026-01-01',
+        valid_to: '2027-01-01',
+      }),
+    };
+
+    const res = verifyMtlsClientCertificate(mockSocket as any, {
+      allowedFingerprints: ['AA:BB:CC:DD:EE:FF:11:22:33:44:55:66:77:88:99:00:AA:BB:CC:DD:EE:FF:11:22:33:44:55:66:77:88:99:00'],
+      allowedCommonNames: ['psp.bank.gateway'],
+    });
+
+    expect(res.verified).toBe(true);
+    expect(res.certDetails?.subjectCN).toBe('psp.bank.gateway');
+  });
+
+  it('rejects unauthorized or mismatched client certificates', () => {
+    const mockSocket = {
+      authorized: false,
+      authorizationError: 'CERT_REVOKED',
+      getPeerCertificate: () => ({ fingerprint256: 'XX', subject: { CN: 'bad.actor' } }),
+    };
+
+    const res = verifyMtlsClientCertificate(mockSocket as any, { rejectUnauthorized: true });
+    expect(res.verified).toBe(false);
+    expect(res.reason).toContain('CERT_REVOKED');
+  });
+});
+
+describe('Cyber Security — Asymmetric JWS (RS256) Signatures', () => {
+  it('signs and verifies RS256 JWS payloads and detects tampering', () => {
+    const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: { type: 'spki', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+    });
+
+    const payload = {
+      orderId: 'ORD_JWS_999',
+      amount: 49900,
+      iss: 'kpay.gateway',
+    };
+
+    const token = signJws(payload, privateKey, 'RS256');
+    expect(token).toContain('.');
+
+    // Verify valid JWS token
+    const result = verifyJws(token, { publicKey, expectedIssuer: 'kpay.gateway' });
+    expect(result.verified).toBe(true);
+    expect(result.payload.orderId).toBe('ORD_JWS_999');
+
+    // Tampered payload detection
+    const tamperedParts = token.split('.');
+    tamperedParts[1] = Buffer.from(JSON.stringify({ orderId: 'ORD_HACKED', amount: 1 })).toString('base64url');
+    const tamperedToken = tamperedParts.join('.');
+
+    expect(() => verifyJws(tamperedToken, { publicKey })).toThrow(SecurityViolationError);
+  });
+});
+
+describe('Cyber Security — Anti-Replay Nonce Vault', () => {
+  it('consumes unique nonces and prevents duplicate replays', () => {
+    const vault = new NonceVault(60);
+
+    const nonce = vault.generateNonce();
+    expect(() => vault.consumeNonce(nonce)).not.toThrow();
+
+    // Second consumption must throw SecurityViolationError
+    expect(() => vault.consumeNonce(nonce)).toThrow(SecurityViolationError);
+  });
+});
+
+

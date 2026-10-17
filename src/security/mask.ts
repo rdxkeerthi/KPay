@@ -17,6 +17,28 @@ const SENSITIVE_KEYS = new Set([
   'txnstoken',
 ]);
 
+/**
+ * Masks a UPI VPA (e.g. 'john.doe@okhdfcbank' -> 'jo****oe@okhdfcbank') to prevent PII leakage.
+ */
+export function maskVpa(vpa: string): string {
+  if (!vpa || typeof vpa !== 'string' || !vpa.includes('@')) {
+    return vpa;
+  }
+  const parts = vpa.split('@');
+  const handle = parts[0];
+  const bank = parts[1];
+  if (!handle || !bank) {
+    return vpa;
+  }
+  if (handle.length <= 2) {
+    return `*@${bank}`;
+  }
+  if (handle.length <= 4) {
+    return `${handle[0]}**@${bank}`;
+  }
+  return `${handle.slice(0, 2)}****${handle.slice(-2)}@${bank}`;
+}
+
 export function maskSecrets(obj: unknown): unknown {
   if (obj === null || obj === undefined) return obj;
 
@@ -24,6 +46,10 @@ export function maskSecrets(obj: unknown): unknown {
     // Mask potential JWT tokens or long base64 strings
     if (obj.length > 50 && !obj.includes(' ') && !obj.includes('http')) {
       return `${obj.slice(0, 4)}...***...${obj.slice(-4)}`;
+    }
+    // Mask standalone VPA string if passed
+    if (obj.includes('@') && !obj.includes(' ') && obj.split('@').length === 2 && !obj.includes('http')) {
+      return maskVpa(obj);
     }
     return obj;
   }
@@ -38,9 +64,11 @@ export function maskSecrets(obj: unknown): unknown {
       const lower = key.toLowerCase();
       if (SENSITIVE_KEYS.has(lower) || lower.includes('secret') || lower.includes('key')) {
         masked[key] = '[REDACTED_SECRET]';
-      } else if (lower.includes('phone') && typeof value === 'string' && value.length === 10) {
+      } else if (lower.includes('phone') && typeof value === 'string' && value.length >= 10) {
         // Redact PII mobile numbers: 98****3210
         masked[key] = `${value.slice(0, 2)}******${value.slice(-2)}`;
+      } else if ((lower.includes('vpa') || lower.includes('upi')) && typeof value === 'string') {
+        masked[key] = maskVpa(value);
       } else {
         masked[key] = maskSecrets(value);
       }

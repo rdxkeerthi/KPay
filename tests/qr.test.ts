@@ -55,4 +55,23 @@ describe('KPay QR & NPCI Specification Engine', () => {
     expect(Buffer.isBuffer(buffer)).toBe(true);
     expect(buffer.length).toBeGreaterThan(100);
   });
+
+  it('builds clean P2P URI without mode=04 for personal accounts to bypass Paytm Protect alert', () => {
+    const personalRequest = {
+      vpa: 'demo.user@okhdfcbank',
+      name: 'Demo Account Holder',
+      amount: 5.00,
+      orderId: 'ORD_PERSONAL_1',
+      accountType: 'personal' as const,
+      mobileNumber: '9999999999',
+    };
+
+    const uri = buildUPIUri(personalRequest);
+    expect(uri).toContain('pa=demo.user%40okhdfcbank');
+    expect(uri).toContain('am=5.00');
+    expect(uri).not.toContain('mode=04'); // mode=04 is omitted to prevent Paytm Protect risk alert!
+
+    const intent = buildIntentLinks(uri, personalRequest.mobileNumber);
+    expect(intent.mobileIntent).toBe('upi://pay?pa=9999999999@upi&cu=INR');
+  });
 });

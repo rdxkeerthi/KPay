@@ -14,13 +14,14 @@ import type {
 import { generateUPIQR } from '../qr/generator.js';
 import { buildIntentLinks } from '../qr/uri-builder.js';
 import { parseBankCreditNotification } from './parser.js';
+import { parseUpiReturnCallback, type UpiCallbackVerificationResult } from './callback.js';
 import type { UTRVerificationResult } from './types.js';
 import type { IKPayStore } from '../store/types.js';
 import { MemoryStore } from '../store/memory-store.js';
 import { globalSSEBroadcaster, PaymentSSEBroadcaster } from '../realtime/sse.js';
 import { validateOrderId, validatePaiseAmount, validateVpa } from '../security/validation.js';
 import { InvalidConfigError, SecurityViolationError } from '../errors.js';
-import { Logger } from '../security/mask.js';
+import { Logger, maskVpa } from '../security/mask.js';
 
 export class DirectUPIGateway {
   readonly vpa: string;
@@ -63,18 +64,22 @@ export class DirectUPIGateway {
 
     const amountInRupees = request.amount / 100;
 
-    // Generate dynamic QR code with NPCI mode=04 (locked amount)
+    // Differentiate between Verified Merchant (P2M) and Personal Account (P2P).
+    // Omit mode=04 on personal accounts to prevent Paytm Protect / NPCI Risk Policy alerts!
+    const isPersonal = !this.mcc;
     const qrResult = await generateUPIQR({
       vpa: this.vpa,
       name: this.payeeName,
       amount: amountInRupees,
       orderId: request.orderId,
       note: `Pay ${request.orderId}`,
-      mode: 'fixed',
+      mode: isPersonal ? 'open' : 'fixed',
       mc: this.mcc,
+      accountType: isPersonal ? 'personal' : 'merchant',
+      url: request.redirectUrl || request.callbackUrl,
     });
 
-    const intentLinks = buildIntentLinks(qrResult.upiUri);
+    const intentLinks = buildIntentLinks(qrResult.upiUri, request.customerPhone);
 
     // Save order in state ledger
     await this.store.saveOrder({
@@ -89,7 +94,7 @@ export class DirectUPIGateway {
       updatedAt: Date.now(),
     });
 
-    this.logger.info(`Direct UPI payment session created for ${request.orderId}: ₹${amountInRupees.toFixed(2)} to ${this.vpa}`);
+    this.logger.info(`Direct UPI payment session created for ${request.orderId}: ₹${amountInRupees.toFixed(2)} to ${maskVpa(this.vpa)}`);
 
     return {
       success: true,
@@ -157,6 +162,54 @@ export class DirectUPIGateway {
   }
 
   /**
+   * Verifies the return intent callback parameters when a customer finishes paying
+   * in Google Pay, PhonePe, or Paytm and returns to your checkout redirect URL.
+   */
+  async verifyReturnCallback(
+    params: URLSearchParams | Record<string, unknown> | string,
+    fallbackOrderId?: string,
+  ): Promise<UpiCallbackVerificationResult> {
+    const result = parseUpiReturnCallback(params);
+    const orderId = result.orderId ?? fallbackOrderId;
+
+    if (!orderId) {
+      this.logger.warn('UPI Return callback received without orderId reference');
+      return result;
+    }
+
+    const order = await this.store.getOrder(orderId);
+    if (!order) {
+      this.logger.warn(`Order ${orderId} not found during return callback verification`);
+      return result;
+    }
+
+    if (result.verified && result.status === 'SUCCESS') {
+      const utr = result.utr ?? result.txnId ?? `UPI_RET_${Date.now()}`;
+      if (result.utr) {
+        this.claimedUtrs.add(result.utr);
+      }
+
+      await this.store.updateStatus(orderId, 'SUCCESS', {
+        utr,
+        txnId: result.txnId,
+        verifiedVia: 'app_return_callback',
+      });
+
+      this.broadcaster.publish({
+        orderId,
+        status: 'SUCCESS',
+        amount: order.amount,
+        transactionId: utr,
+        timestamp: Date.now(),
+      });
+
+      this.logger.info(`Order ${orderId} verified via UPI App Return callback: UTR=${utr}`);
+    }
+
+    return result;
+  }
+
+  /**
    * Ingests bank SMS or device notification forwarded from your phone / soundbox.
    * Automatically parses the credit SMS, matches pending order, updates ledger, and broadcasts SSE!
    */
@@ -171,11 +224,13 @@ export class DirectUPIGateway {
 
     let targetOrderId = expectedOrderId ?? parsed.orderIdCandidate;
 
-    // If order ID not explicitly specified in note, look up by exact amount in pending orders
-    if (!targetOrderId) {
-      // Find order matching exact amount in paise
-      // In practice, orderId is embedded in note or passed from active checkout
-      targetOrderId = expectedOrderId;
+    // If order ID not explicitly specified in SMS, look up by exact amount in pending orders
+    if (!targetOrderId && typeof (this.store as any).findPendingByAmount === 'function') {
+      const matched = await (this.store as any).findPendingByAmount(parsed.amountPaise);
+      if (matched) {
+        targetOrderId = matched.orderId;
+        this.logger.info(`Correlated bank notification to pending order ${targetOrderId} by amount ₹${(parsed.amountPaise / 100).toFixed(2)}`);
+      }
     }
 
     if (!targetOrderId) {

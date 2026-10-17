@@ -6,42 +6,59 @@ import type { UPIQRRequest, UPIIntentLink } from '../types.js';
 import { validateQRRequest } from '../security/validation.js';
 
 /**
- * Builds a strict NPCI-compliant UPI URI.
+ * Builds an NPCI-compliant UPI URI.
  *
- * Specification:
- * - pa: Payee VPA
- * - pn: Payee Name
- * - am: Amount in rupees (two decimal places)
- * - tr: Merchant Transaction Reference ID
- * - cu: Currency code (INR)
- * - mode: '04' for non-editable, locked amount; '00' for open
- * - mc: Optional Merchant Category Code (4 digits)
- * - tn: Optional Transaction note
+ * Automatically handles the difference between:
+ * 1. Personal Bank Accounts (P2P):
+ *    Oromits `mode=04` and merchant-only tags to eliminate "Paytm Protect" and
+ *    NPCI UPI Risk Policy alerts ("This payment may fail as per UPI Risk Policy...").
+ * 2. Verified Merchant Accounts (P2M):
+ *    Applies `mode=04` (locked non-editable amount), MCC code, and transaction references.
  */
 export function buildUPIUri(request: UPIQRRequest): string {
   validateQRRequest(request);
+
+  const isPersonal = request.accountType === 'personal' || (!request.mc && request.accountType !== 'merchant');
 
   const params = new URLSearchParams();
   params.set('pa', request.vpa);
   params.set('pn', request.name);
   params.set('am', request.amount.toFixed(2));
-  params.set('tr', request.orderId);
   params.set('cu', 'INR');
 
-  // NPCI Mode: '04' locks amount (user cannot change amount)
-  const mode = request.mode ?? 'fixed';
-  if (mode === 'fixed') {
-    params.set('mode', '04');
+  if (!isPersonal) {
+    // ── Verified Merchant Flow (P2M) ──────────────────────────────────
+    // mode=04 locks the amount in the user's UPI app (NPCI spec for verified merchants).
+    // MUST NOT be sent for personal P2P accounts as it triggers Paytm Protect & risk policy blocks.
+    const mode = request.mode ?? 'fixed';
+    if (mode === 'fixed') {
+      params.set('mode', '04');
+    } else {
+      params.set('mode', '00');
+    }
+
+    params.set('tr', request.orderId);
+
+    if (request.mc) {
+      params.set('mc', request.mc);
+    }
   } else {
-    params.set('mode', '00');
+    // ── Personal Account Flow (P2P) ───────────────────────────────────
+    // Clean, unflagged P2P transfer parameters.
+    // Preserves orderId in the note (tn) without triggering merchant impersonation filters.
+    if (request.mode === 'open') {
+      params.set('mode', '00');
+    }
+    // Only add transaction note if present
+    if (request.note) {
+      params.set('tn', request.note);
+    } else {
+      params.set('tn', `Pay ${request.orderId}`);
+    }
   }
 
-  if (request.mc) {
-    params.set('mc', request.mc);
-  }
-
-  if (request.note) {
-    params.set('tn', request.note);
+  if (request.url) {
+    params.set('url', request.url);
   }
 
   return `upi://pay?${params.toString()}`;
@@ -49,12 +66,12 @@ export function buildUPIUri(request: UPIQRRequest): string {
 
 /**
  * Builds app-specific intent links for Indian mobile payment apps:
- * - PhonePe, Google Pay (Tez), Paytm, BHIM, CRED, Amazon Pay.
+ * - PhonePe, Google Pay (Tez), Paytm, BHIM, CRED, Amazon Pay, and direct UPI mobile intent.
  */
-export function buildIntentLinks(upiUri: string): UPIIntentLink {
+export function buildIntentLinks(upiUri: string, mobileNumber?: string): UPIIntentLink {
   const queryString = upiUri.replace(/^upi:\/\/pay\?/, '');
 
-  return {
+  const links: UPIIntentLink = {
     generic: upiUri,
     phonepe: `phonepe://pay?${queryString}`,
     gpay: `tez://upi/pay?${queryString}`,
@@ -63,4 +80,11 @@ export function buildIntentLinks(upiUri: string): UPIIntentLink {
     cred: `credpay://upi/pay?${queryString}`,
     amazonpay: `amazonpay://upi/pay?${queryString}`,
   };
+
+  if (mobileNumber && /^[6-9]\d{9}$/.test(mobileNumber)) {
+    // UPI Number Intent: allows direct transfer to mobile number via NPCI Mapper
+    links.mobileIntent = `upi://pay?pa=${mobileNumber}@upi&cu=INR`;
+  }
+
+  return links;
 }
