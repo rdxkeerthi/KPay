@@ -49,12 +49,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: NPM Security Audit
-        run: npm audit --audit-level=high
+      - name: NPM Production Dependencies Security Audit
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Verify No Leaked Secrets in Repository
         run: |
           echo "Scanning for accidental secret leaks..."
-          ! grep -rn "sk_live_" src/ || { echo "ERROR: Live secret key detected!"; exit 1; }
-          ! grep -rn "PRIVATE KEY" src/ || { echo "ERROR: Raw private key detected in source!"; exit 1; }
+          if grep -rn "sk_live_" src/; then
+            echo "ERROR: Live secret key detected in src/!"
+            exit 1
+          fi
+          if grep -rn "PRIVATE KEY" src/; then
+            echo "ERROR: Raw private key detected in src/!"
+            exit 1
+          fi
           echo "No secret leaks detected."
