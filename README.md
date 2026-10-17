@@ -71,18 +71,25 @@ npm install kpay@npm:@rdxkeerthi/kpay
 
 ---
 
-## 🎨 In-Built Razorpay-Style Checkout Gateway UI
+## 🎨 Cyber-Glassmorphic Checkout Gateway UI
 
-KPay includes a **drop-in payment modal and standalone checkout page** that looks and functions just like Razorpay Checkout, but with **₹0 aggregator commission** and **direct-to-bank settlement**.
+KPay features an ultra-modern, zero-dependency **Cyber-Glassmorphic Checkout Gateway** available both as a **client-side drop-in modal** and a **server-rendered standalone checkout page**. It rivals commercial gateways like Razorpay in aesthetic polish and UX, but with **₹0 aggregator fees** and **direct bank settlement**.
 
-It features:
-- **Real-Time Live SSE Status Listener**: Detects bank credit the exact millisecond it arrives.
-- **Dynamic Branded QR Code**: Pulsing scan ring with 10-minute expiry countdown timer.
-- **1-Tap UPI Apps**: Direct intent buttons for PhonePe, Google Pay, Paytm, CRED, and BHIM.
-- **Instant Celebration Screen**: Animated SVG checkmark, 3-tone Web Audio chime (`C5 -> E5 -> G5`), and bank UTR receipt.
-- **Manual UTR Verification Fallback**: Instant submission field for customers if network SMS has lag.
+### Key UI Features:
+- **Cyber-Glassmorphic Aesthetic**: Translucent frosted glass card (`backdrop-filter: blur(28px) saturate(180%)`) with ambient floating aurora glows in Indigo, Fuchsia, and Emerald.
+- **Authentic Brand Vector Logos**: Embedded high-resolution inline SVGs for **PhonePe**, **Google Pay**, **Paytm**, **CRED**, and **BHIM/NPCI** — razor-sharp on Retina and 4K screens with zero CDN/image latency.
+- **Polyphonic Web Audio Celebration**: Built-in 4-tone cinematic harmonic chord progression (`C5 ➔ E5 ➔ G5 ➔ C6`) synthesized via dual triangle & sine oscillators with smooth exponential volume decay, accompanied by dynamic CSS confetti bursts.
+- **Real-Time Push Updates via SSE**: Eliminates wasteful frontend polling. The checkout screen transitions automatically the millisecond your server records the payment.
+- **Dynamic Branded QR Code**: High-contrast, scan-optimized QR with pulsating animated scan ring and 10-minute expiry countdown.
+- **Universal 1-Tap UPI Intent Routing**: Direct mobile deep-links for all major UPI payment apps.
+- **Manual UTR Fallback**: Seamless 12-digit bank reference number (UTR) verification input for instant reconciliation if SMS delays occur.
+- **Anti-Clickjacking & Strict CSP**: Includes `getCheckoutSecurityHeaders()` enforcing strict Content Security Policy, `X-Frame-Options`, and anti-tamper safeguards.
+
+---
 
 ### A. Client-Side Drop-in Modal (Browser)
+
+Embed directly into any frontend app (Vanilla JS, React, Vue, Next.js, Angular, Svelte) with zero external CSS or icon dependencies:
 
 ```typescript
 import { KPayCheckout } from '@rdxkeerthi/kpay/checkout';
@@ -91,31 +98,33 @@ const checkout = new KPayCheckout({
   orderId: 'ORD_1001',
   amount: 499.00,
   payeeName: 'My Awesome Store',
-  description: 'Pro Subscription',
+  description: 'Pro Annual Subscription',
   qrDataUrl: session.qrDataUrl,
   upiUri: session.upiUri,
   sseEndpoint: `/api/kpay/stream/${orderId}`,
   utrSubmitEndpoint: `/api/kpay/utr`,
-  themeColor: '#4F46E5', // Customize to your brand color
+  themeColor: '#4F46E5', // Customize to match your brand palette
   onSuccess: (data) => {
-    console.log('Payment Confirmed! Bank UTR:', data.utr);
+    console.log('Payment Verified! Bank UTR:', data.utr);
   },
   onDismiss: () => {
-    console.log('User closed the checkout popup');
+    console.log('Customer dismissed checkout modal');
   },
 });
 
-// Opens the glassmorphic Razorpay-style modal
+// Opens the cyber-glassmorphic checkout modal
 checkout.open();
 ```
 
+---
+
 ### B. Server-Side Standalone Checkout Page (Express / Next.js / Fastify)
 
-Serve a complete, self-contained checkout page directly from your backend with zero CDN dependencies:
+Render and serve a complete, standalone responsive checkout page with embedded security headers:
 
 ```typescript
 import express from 'express';
-import { renderCheckoutHtml } from '@rdxkeerthi/kpay/checkout';
+import { renderCheckoutHtml, getCheckoutSecurityHeaders } from '@rdxkeerthi/kpay/checkout';
 
 const app = express();
 
@@ -126,11 +135,17 @@ app.get('/checkout/:orderId', async (req, res) => {
     note: 'Premium Plan',
   });
 
+  // Apply strict CSP and anti-framing headers
+  const headers = getCheckoutSecurityHeaders();
+  for (const [key, value] of Object.entries(headers)) {
+    res.setHeader(key, value);
+  }
+
   const html = renderCheckoutHtml({
     orderId: session.orderId,
     amount: session.amount,
-    payeeName: 'Acme Corp',
-    description: 'Annual Subscription',
+    payeeName: 'Acme SuperStore',
+    description: 'Pro Subscription',
     qrDataUrl: session.qrDataUrl,
     upiUri: session.upiUri,
     sseEndpoint: `/api/kpay/stream/${session.orderId}`,
@@ -426,6 +441,9 @@ Open **`http://localhost:3000`** in your browser to test:
 | :--- | :---: | :---: | :---: | :---: |
 | **Transaction Fee (MDR)** | **₹0.00 (Free)** | ₹0.00 (Free) | 2% + GST | 1.9% + GST |
 | **Direct Bank Settlement** | ✅ Instant | ✅ Instant | ❌ T+2 Days | ❌ T+1-2 Days |
+| **Cyber-Glassmorphic UI** | ✅ Built-in Modal & Server Page | ❌ None | Standard | Standard |
+| **Brand Vector SVG Icons** | ✅ Official Vectors (PhonePe/GPay/Paytm) | ❌ None | ✅ Included | ✅ Included |
+| **Polyphonic Chime & Confetti** | ✅ Built-in Web Audio API | ❌ None | ❌ None | ❌ None |
 | **Personal & Savings VPAs** | ✅ P2P Safe Mode | ❌ Restricted | ❌ Business KYC | ❌ Business KYC |
 | **Paytm Protect / Risk Safe** | ✅ QR & Mobile Intents | ❌ Fails Risk Check | N/A | N/A |
 | **Mutual TLS (mTLS)** | ✅ Built-in Guard | ❌ None | Enterprise Only | Enterprise Only |
