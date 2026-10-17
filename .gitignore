@@ -74,3 +74,4 @@ scratch/
 SKILL.md
 test-app/
 *.tgz
+preview-server.mjs
