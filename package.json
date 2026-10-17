@@ -1,6 +1,9 @@
 {
-  "name": "kpay",
+  "name": "@rdxkeerthi/kpay",
   "version": "1.0.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "Enterprise-grade, zero-commission, cyber-hardened UPI payment gateway for Node.js & TypeScript. Direct-to-bank settlement, multi-PSP failover, real-time SSE listener, branded QR generation.",
   "author": "rdxkeerthi",
   "license": "MIT",
@@ -76,7 +79,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/rdxkeerthi/kpay.git"
+    "url": "git+https://github.com/rdxkeerthi/kpay.git"
   },
   "homepage": "https://github.com/rdxkeerthi/kpay#readme",
   "bugs": {

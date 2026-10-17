@@ -59,7 +59,7 @@ KPay is engineered from the ground up for zero-trust security and hardened again
 ### Installation
 
 ```bash
-npm install kpay
+npm install @rdxkeerthi/kpay
 ```
 
 ### 1. Generating a Branded UPI QR Code (Safe for Server & Browser)
