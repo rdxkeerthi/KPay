@@ -69,6 +69,79 @@ npm install @rdxkeerthi/kpay
 npm install kpay@npm:@rdxkeerthi/kpay
 ```
 
+---
+
+## 🎨 In-Built Razorpay-Style Checkout Gateway UI
+
+KPay includes a **drop-in payment modal and standalone checkout page** that looks and functions just like Razorpay Checkout, but with **₹0 aggregator commission** and **direct-to-bank settlement**.
+
+It features:
+- **Real-Time Live SSE Status Listener**: Detects bank credit the exact millisecond it arrives.
+- **Dynamic Branded QR Code**: Pulsing scan ring with 10-minute expiry countdown timer.
+- **1-Tap UPI Apps**: Direct intent buttons for PhonePe, Google Pay, Paytm, CRED, and BHIM.
+- **Instant Celebration Screen**: Animated SVG checkmark, 3-tone Web Audio chime (`C5 -> E5 -> G5`), and bank UTR receipt.
+- **Manual UTR Verification Fallback**: Instant submission field for customers if network SMS has lag.
+
+### A. Client-Side Drop-in Modal (Browser)
+
+```typescript
+import { KPayCheckout } from '@rdxkeerthi/kpay/checkout';
+
+const checkout = new KPayCheckout({
+  orderId: 'ORD_1001',
+  amount: 499.00,
+  payeeName: 'My Awesome Store',
+  description: 'Pro Subscription',
+  qrDataUrl: session.qrDataUrl,
+  upiUri: session.upiUri,
+  sseEndpoint: `/api/kpay/stream/${orderId}`,
+  utrSubmitEndpoint: `/api/kpay/utr`,
+  themeColor: '#4F46E5', // Customize to your brand color
+  onSuccess: (data) => {
+    console.log('Payment Confirmed! Bank UTR:', data.utr);
+  },
+  onDismiss: () => {
+    console.log('User closed the checkout popup');
+  },
+});
+
+// Opens the glassmorphic Razorpay-style modal
+checkout.open();
+```
+
+### B. Server-Side Standalone Checkout Page (Express / Next.js / Fastify)
+
+Serve a complete, self-contained checkout page directly from your backend with zero CDN dependencies:
+
+```typescript
+import express from 'express';
+import { renderCheckoutHtml } from '@rdxkeerthi/kpay/checkout';
+
+const app = express();
+
+app.get('/checkout/:orderId', async (req, res) => {
+  const session = await kpay.createPayment({
+    orderId: req.params.orderId,
+    amount: 499.00,
+    note: 'Premium Plan',
+  });
+
+  const html = renderCheckoutHtml({
+    orderId: session.orderId,
+    amount: session.amount,
+    payeeName: 'Acme Corp',
+    description: 'Annual Subscription',
+    qrDataUrl: session.qrDataUrl,
+    upiUri: session.upiUri,
+    sseEndpoint: `/api/kpay/stream/${session.orderId}`,
+    utrSubmitEndpoint: `/api/kpay/verify-utr`,
+    returnUrl: `https://mybusiness.com/order/success`,
+  });
+
+  res.send(html);
+});
+```
+
 ### 1. Generating a Branded UPI QR Code (Safe for Server & Browser)
 
 ```typescript

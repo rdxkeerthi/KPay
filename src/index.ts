@@ -12,3 +12,4 @@ export * from './qr/index.js';
 export * from './security/index.js';
 export * from './realtime/index.js';
 export * from './direct/index.js';
+export * from './checkout/index.js';

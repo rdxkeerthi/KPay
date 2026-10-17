@@ -1,10 +1,10 @@
 {
   "name": "@rdxkeerthi/kpay",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "publishConfig": {
     "access": "public"
   },
-  "description": "Enterprise-grade, zero-commission, cyber-hardened UPI payment gateway for Node.js & TypeScript. Direct-to-bank settlement, multi-PSP routing (PhonePe, Paytm, BharatPe), real-time SSE listener, branded QR engine, and tamper-evident cryptographic session seals.",
+  "description": "Enterprise-grade, zero-commission, cyber-hardened UPI payment gateway for Node.js & TypeScript with in-built Razorpay-style Checkout Gateway UI, direct-to-bank settlement, multi-PSP routing (PhonePe, Paytm, BharatPe), real-time SSE listener, branded QR engine, and tamper-evident cryptographic session seals.",
   "author": "rdxkeerthi",
   "license": "MIT",
   "type": "module",
@@ -56,6 +56,11 @@
       "types": "./dist/direct/index.d.ts",
       "import": "./dist/direct/index.js",
       "require": "./dist/direct/index.cjs"
+    },
+    "./checkout": {
+      "types": "./dist/checkout/index.d.ts",
+      "import": "./dist/checkout/index.js",
+      "require": "./dist/checkout/index.cjs"
     }
   },
   "sideEffects": false,

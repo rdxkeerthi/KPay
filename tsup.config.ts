@@ -12,6 +12,7 @@ export default defineConfig({
     'adapters/direct': 'src/adapters/direct.ts',
     'realtime/index': 'src/realtime/index.ts',
     'direct/index': 'src/direct/index.ts',
+    'checkout/index': 'src/checkout/index.ts',
   },
   format: ['esm', 'cjs'],
   dts: true,
