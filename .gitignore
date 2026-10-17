@@ -1,0 +1,74 @@
+# ============================================================================
+# KPay — Cyber-Hardened .gitignore
+# ============================================================================
+
+# ─── Environment & Secrets (CRITICAL: Never commit credentials) ──────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+id_rsa*
+secrets/
+credentials.json
+
+# ─── Dependencies ───────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ─── Build & Distribution Outputs ──────────────────────────────────────────
+dist/
+build/
+out/
+.tsup/
+*.tsbuildinfo
+
+# ─── Testing & Coverage ─────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+*.lcov
+test-results/
+
+# ─── Logs & Debugging ───────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ─── OS & System Artifacts ──────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# ─── IDE & Editor Configurations ────────────────────────────────────────────
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+.gemini/
+.agents/
+
+# ─── Temporary & Scratch Files ──────────────────────────────────────────────
+tmp/
+temp/
+scratch/
+*.bak
+*.tmp
+SKILL.md

@@ -1,0 +1,104 @@
+{
+  "name": "kpay",
+  "version": "1.0.0",
+  "description": "Enterprise-grade, zero-commission, cyber-hardened UPI payment gateway for Node.js & TypeScript. Direct-to-bank settlement, multi-PSP failover, real-time SSE listener, branded QR generation.",
+  "author": "KPay Team",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./qr": {
+      "types": "./dist/qr/index.d.ts",
+      "import": "./dist/qr/index.js",
+      "require": "./dist/qr/index.cjs"
+    },
+    "./security": {
+      "types": "./dist/security/index.d.ts",
+      "import": "./dist/security/index.js",
+      "require": "./dist/security/index.cjs"
+    },
+    "./phonepe": {
+      "types": "./dist/adapters/phonepe.d.ts",
+      "import": "./dist/adapters/phonepe.js",
+      "require": "./dist/adapters/phonepe.cjs"
+    },
+    "./paytm": {
+      "types": "./dist/adapters/paytm.d.ts",
+      "import": "./dist/adapters/paytm.js",
+      "require": "./dist/adapters/paytm.cjs"
+    },
+    "./bharatpe": {
+      "types": "./dist/adapters/bharatpe.d.ts",
+      "import": "./dist/adapters/bharatpe.js",
+      "require": "./dist/adapters/bharatpe.cjs"
+    },
+    "./mock": {
+      "types": "./dist/adapters/mock.d.ts",
+      "import": "./dist/adapters/mock.js",
+      "require": "./dist/adapters/mock.cjs"
+    },
+    "./realtime": {
+      "types": "./dist/realtime/index.d.ts",
+      "import": "./dist/realtime/index.js",
+      "require": "./dist/realtime/index.cjs"
+    },
+    "./direct": {
+      "types": "./dist/direct/index.d.ts",
+      "import": "./dist/direct/index.js",
+      "require": "./dist/direct/index.cjs"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "SKILL.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\""
+  },
+  "keywords": [
+    "kpay",
+    "upi",
+    "zero-commission",
+    "payment-gateway",
+    "india-payment",
+    "phonepe",
+    "paytm",
+    "bharatpe",
+    "npci",
+    "upi-qr",
+    "cybersecurity",
+    "zero-mdr",
+    "failover",
+    "sse",
+    "typescript"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/qrcode": "^1.5.5",
+    "tsup": "^8.1.0",
+    "typescript": "^5.4.5",
+    "vitest": "^2.0.0"
+  }
+}
