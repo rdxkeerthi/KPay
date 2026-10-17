@@ -6,10 +6,11 @@
 ---
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+[![NPM Version](https://img.shields.io/npm/v/@rdxkeerthi/kpay?color=blue&logo=npm)](https://www.npmjs.com/package/@rdxkeerthi/kpay)
+[![CI](https://github.com/rdxkeerthi/KPay/actions/workflows/ci.yml/badge.svg)](https://github.com/rdxkeerthi/KPay/actions/workflows/ci.yml)
+[![Security & CodeQL](https://github.com/rdxkeerthi/KPay/actions/workflows/security.yml/badge.svg)](https://github.com/rdxkeerthi/KPay/actions/workflows/security.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Commission](https://img.shields.io/badge/Commission-₹0%20Zero%20MDR-success)](https://npci.org.in)
-[![Security](https://img.shields.io/badge/Security-Hardened%20Shield-blueviolet)](./SKILL.md)
-[![Tests](https://img.shields.io/badge/Tests-100%25%20Passing-brightgreen)](./tests)
 
 KPay is a modern, modular, production-grade UPI engine that allows Indian businesses, developers, and platforms to collect UPI payments directly into their registered bank accounts with **zero aggregator commissions**.
 
@@ -51,6 +52,8 @@ KPay is engineered from the ground up for zero-trust security and hardened again
 10. **Path Traversal & Injection Shield**: Order IDs are strictly sanitized (`^[a-zA-Z0-9._-]{1,64}$`), rejecting directory traversal (`../`) and SQL injection attempts.
 11. **Secret Masking Logger**: Automatically redacts merchant keys, salt keys, authorization tokens, and customer mobile numbers from application logs.
 12. **Client-Side Leakage Guard**: The core `KPay` client throws an explicit error if accidentally imported into browser or React Native client bundles to prevent secret key leakage.
+13. **Input Sanitization & Unicode Shield**: Strips HTML/XSS injection tags, Zero-Width characters (`\u200B-\u200D`, `\uFEFF`), and Bi-Directional Unicode overrides (`\u202E`) preventing payment parameter fraud.
+14. **Tamper-Evident Session Seals**: Cryptographic HMAC-SHA256 session seals (`sealPaymentSession`, `verifyPaymentSession`) guarantee that payment parameters (orderId, amount, VPA) are verified on both ends.
 
 ---
 
@@ -59,7 +62,11 @@ KPay is engineered from the ground up for zero-trust security and hardened again
 ### Installation
 
 ```bash
+# Standard installation
 npm install @rdxkeerthi/kpay
+
+# Or install as 'kpay' directly using npm alias:
+npm install kpay@npm:@rdxkeerthi/kpay
 ```
 
 ### 1. Generating a Branded UPI QR Code (Safe for Server & Browser)

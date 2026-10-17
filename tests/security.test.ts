@@ -23,6 +23,12 @@ import { getPaymentSecurityHeaders } from '../src/security/headers';
 import { verifyMtlsClientCertificate } from '../src/security/mtls';
 import { signJws, verifyJws } from '../src/security/jws';
 import { NonceVault } from '../src/security/nonce-vault';
+import {
+  sanitizePaymentInput,
+  sanitizeUpiNote,
+  sealPaymentSession,
+  verifyPaymentSession,
+} from '../src/security/sanitizer';
 import { generateKeyPairSync } from 'node:crypto';
 import { SecurityViolationError, InvalidConfigError } from '../src/errors';
 
@@ -248,6 +254,53 @@ describe('Cyber Security — Anti-Replay Nonce Vault', () => {
 
     // Second consumption must throw SecurityViolationError
     expect(() => vault.consumeNonce(nonce)).toThrow(SecurityViolationError);
+  });
+});
+
+describe('Cyber Security — Input Sanitizer & Tamper-Evident Session Sealer', () => {
+  it('sanitizes malicious script tags, control chars, and zero-width spaces', () => {
+    const maliciousInput = '<script>alert("hack")</script>Order\u200B123\u202Ereversed\x00';
+    const clean = sanitizePaymentInput(maliciousInput);
+    expect(clean).not.toContain('<script>');
+    expect(clean).not.toContain('\u200B');
+    expect(clean).not.toContain('\u202E');
+    expect(clean).not.toContain('\x00');
+    expect(clean).toContain('Order');
+  });
+
+  it('sanitizes UPI notes stripping URL breaking characters', () => {
+    const dangerousNote = 'Refund?order=123&user=456#test<script>';
+    const safeNote = sanitizeUpiNote(dangerousNote);
+    expect(safeNote).not.toContain('?');
+    expect(safeNote).not.toContain('&');
+    expect(safeNote).not.toContain('#');
+    expect(safeNote).not.toContain('<script>');
+  });
+
+  it('generates cryptographic tamper-evident seals and detects parameter tampering', () => {
+    const secret = 'super-secret-production-key-12345';
+    const session = {
+      orderId: 'ORD_SEAL_1',
+      amount: 499.0,
+      vpa: 'merchant@okaxis',
+      currency: 'INR',
+      createdAt: 1700000000000,
+      nonce: 'nonce_abc123',
+    };
+
+    const seal = sealPaymentSession(session, secret);
+    expect(seal).toHaveLength(64); // SHA256 hex string
+
+    // Valid check
+    expect(verifyPaymentSession(session, seal, secret)).toBe(true);
+
+    // Tampered amount detection
+    const tamperedSession = { ...session, amount: 1.0 };
+    expect(verifyPaymentSession(tamperedSession, seal, secret)).toBe(false);
+
+    // Tampered VPA detection
+    const tamperedVpa = { ...session, vpa: 'attacker@upi' };
+    expect(verifyPaymentSession(tamperedVpa, seal, secret)).toBe(false);
   });
 });
 

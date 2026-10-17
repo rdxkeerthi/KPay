@@ -1,0 +1,60 @@
+name: Security Audit & CodeQL
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: '0 6 * * 1' # Every Monday at 06:00 UTC
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  codeql:
+    name: CodeQL Security Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended,security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:javascript-typescript'
+
+  audit:
+    name: Dependency Audit & Anti-Leak Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: NPM Security Audit
+        run: npm audit --audit-level=high
+
+      - name: Verify No Leaked Secrets in Repository
+        run: |
+          echo "Scanning for accidental secret leaks..."
+          ! grep -rn "sk_live_" src/ || { echo "ERROR: Live secret key detected!"; exit 1; }
+          ! grep -rn "PRIVATE KEY" src/ || { echo "ERROR: Raw private key detected in source!"; exit 1; }
+          echo "No secret leaks detected."

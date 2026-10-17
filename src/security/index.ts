@@ -9,3 +9,4 @@ export * from './headers.js';
 export * from './mtls.js';
 export * from './jws.js';
 export * from './nonce-vault.js';
+export * from './sanitizer.js';

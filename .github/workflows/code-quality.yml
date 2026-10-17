@@ -1,0 +1,43 @@
+name: Code Quality & Integrity
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  quality:
+    name: Type Integrity & Dual Bundle Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type Integrity Check (tsc --noEmit)
+        run: npm run typecheck
+
+      - name: Build Dual ESM/CJS Bundles
+        run: npm run build
+
+      - name: Verify Bundle Outputs
+        run: |
+          test -f dist/index.js || { echo "Missing ESM bundle"; exit 1; }
+          test -f dist/index.cjs || { echo "Missing CJS bundle"; exit 1; }
+          test -f dist/index.d.ts || { echo "Missing DTS types"; exit 1; }
+          test -f dist/security/index.js || { echo "Missing security ESM bundle"; exit 1; }
+          test -f dist/qr/index.js || { echo "Missing QR ESM bundle"; exit 1; }
+          echo "All entry points and type declarations verified!"
+
+      - name: Dry-run Package Tarball
+        run: npm pack --dry-run
