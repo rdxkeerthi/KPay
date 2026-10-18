@@ -61,8 +61,24 @@ KPay is engineered from the ground up for zero-trust security and hardened again
 
 ### Installation
 
+#### From GitHub Packages:
+Configure npm to resolve `@rdxkeerthi` scoped packages from GitHub Packages:
+
 ```bash
-# Standard installation
+# Point @rdxkeerthi scope to GitHub Packages registry
+npm config set @rdxkeerthi:registry https://npm.pkg.github.com
+
+# Install KPay
+npm install @rdxkeerthi/kpay
+```
+
+Alternatively, add this to a local `.npmrc` file in your project:
+```ini
+@rdxkeerthi:registry=https://npm.pkg.github.com
+```
+
+#### From NPM:
+```bash
 npm install @rdxkeerthi/kpay
 
 # Or install as 'kpay' directly using npm alias:

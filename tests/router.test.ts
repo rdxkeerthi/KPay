@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { KPay } from '../src/client';
 import { SmartRouter } from '../src/router/smart-router';
 
 describe('KPay Smart Router & Circuit Breaker Failover', () => {
   it('creates payments and handles failover when primary provider fails', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('PhonePe network timeout simulated'));
     const kpay = new KPay({
       environment: 'sandbox',
       primaryProvider: 'phonepe', // invalid credentials to force failure

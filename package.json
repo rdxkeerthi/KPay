@@ -2,6 +2,7 @@
   "name": "@rdxkeerthi/kpay",
   "version": "1.3.0",
   "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
     "access": "public"
   },
   "description": "Enterprise-grade, zero-commission, cyber-hardened UPI payment gateway for Node.js & TypeScript with in-built Razorpay-style Checkout Gateway UI, direct-to-bank settlement, multi-PSP routing (PhonePe, Paytm, BharatPe), real-time SSE listener, branded QR engine, and tamper-evident cryptographic session seals.",
@@ -84,11 +85,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rdxkeerthi/kpay.git"
+    "url": "git+https://github.com/rdxkeerthi/KPay.git"
   },
-  "homepage": "https://github.com/rdxkeerthi/kpay#readme",
+  "homepage": "https://github.com/rdxkeerthi/KPay#readme",
   "bugs": {
-    "url": "https://github.com/rdxkeerthi/kpay/issues"
+    "url": "https://github.com/rdxkeerthi/KPay/issues"
   },
   "keywords": [
     "kpay",
