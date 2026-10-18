@@ -4,12 +4,6 @@ on:
   release:
     types: [published]
   workflow_dispatch:
-    inputs:
-      dry_run:
-        description: 'Dry run (validate build and packaging without publishing)'
-        type: boolean
-        required: false
-        default: false
 
 permissions:
   contents: read
@@ -41,14 +35,7 @@ jobs:
       - name: Inspect package contents
         run: npm pack --dry-run
 
-      - name: Publish to GitHub Packages (Dry Run)
-        if: ${{ inputs.dry_run }}
-        run: npm publish --dry-run
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Publish to GitHub Packages
-        if: ${{ !inputs.dry_run }}
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
