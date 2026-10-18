@@ -48,7 +48,7 @@ jobs:
           cat ${TARBALL}.sha256
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: KPay Release ${{ github.ref_name || inputs.tag_name }}
           draft: false
