@@ -118,7 +118,7 @@
     "@types/node": "^20.14.0",
     "@types/qrcode": "^1.5.5",
     "@vitest/coverage-v8": "^2.1.9",
-    "tsup": "^8.1.0",
+    "tsup": "^9.0.0",
     "typescript": "^5.4.5",
     "vitest": "^2.0.0"
   }
